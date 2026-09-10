@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"npm run server:watch\"",
     "client": "vite",
-    "server": "node server/index.js",
-    "server:watch": "nodemon --watch server --ext js,json --exec node server/index.js",
+    "server": "node server.js",
+    "server:watch": "nodemon --watch server.js --ext js --exec node server.js",
     "build": "vite build",
     "preview": "vite preview"
   },

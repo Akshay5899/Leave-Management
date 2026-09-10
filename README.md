@@ -37,7 +37,7 @@ Push this repository to GitHub, then deploy the two services separately.
 Create a new **Web Service** from the repository. Render can also use the included `render.yaml` Blueprint.
 
 - Build command: `npm install`
-- Start command: `npm run server`
+- Start command: `npm run server` or `node server.js`
 - Health check path: `/api/health`
 
 Set these Render environment variables:
