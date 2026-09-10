@@ -9,15 +9,24 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 const app = express();
-const port = process.env.PORT || 4001;
+const port = Number(process.env.PORT) || 4001;
 const jwtSecret = process.env.JWT_SECRET || 'leaveflow-development-secret';
 const managerEmail = (process.env.MANAGER_EMAIL || 'akshaykhot5899@gmail.com').toLowerCase();
 const managerPassword = process.env.MANAGER_PASSWORD || 'Akshay@5899';
 const employeePassword = process.env.EMPLOYEE_PASSWORD || 'leaveflow123';
-const allowedOrigins = (process.env.FRONTEND_URL || '').split(',').map(origin => origin.trim()).filter(Boolean);
+const allowedOrigins = (process.env.FRONTEND_URL || '').split(',').map(origin => origin.trim()).filter(Boolean).map(origin => origin.replace(/\/$/, ''));
 app.disable('x-powered-by');
 app.use(helmet());
-app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many login attempts. Try again later.' } });
 
@@ -58,6 +67,17 @@ const messageSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Message = mongoose.model('Message', messageSchema);
 
+const attendanceSchema = new mongoose.Schema({
+  employeeName: { type: String, required: true },
+  employeeEmail: { type: String, required: true },
+  date: { type: String, required: true },
+  status: { type: String, enum: ['Present', 'Off'], required: true },
+  punchIn: Date,
+  punchOut: Date
+}, { timestamps: true });
+attendanceSchema.index({ employeeEmail: 1, date: 1 }, { unique: true });
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
 const seed = [
   { id: 'demo-1', employeeName: 'Maya Patel', employeeEmail: 'maya.patel@northstar.co', type: 'Annual leave', startDate: '2026-09-18', endDate: '2026-09-22', days: 3, reason: 'Family trip', status: 'Pending', submittedAt: '2026-09-08T09:30:00.000Z' },
   { id: 'demo-2', employeeName: 'Jon Bell', employeeEmail: 'jon.bell@northstar.co', type: 'Sick leave', startDate: '2026-09-09', endDate: '2026-09-10', days: 2, reason: 'Recovery time', status: 'Approved', submittedAt: '2026-09-07T12:10:00.000Z' },
@@ -73,12 +93,22 @@ const employeeSeed = [
 let memoryLeaves = [...seed];
 let memoryEmployees = [...employeeSeed];
 let memoryMessages = [];
+let memoryAttendance = [];
 const useMongo = Boolean(process.env.MONGODB_URI);
 
 const serialize = leave => {
   const item = leave.toObject ? leave.toObject() : leave;
   return { ...item, id: item.id || item._id?.toString() };
 };
+
+const getLocalDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const isWeekend = date => [0, 6].includes(new Date(`${date}T12:00:00`).getDay());
 
 const authenticate = (req, res, next) => {
   const token = req.get('authorization')?.replace(/^Bearer\s+/i, '');
@@ -106,7 +136,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
     const employee = useMongo
       ? await Employee.findOne({ email }).select('+passwordHash').lean()
       : memoryEmployees.find(item => item.email === email);
-    const valid = employee && (useMongo ? await bcrypt.compare(password, employee.passwordHash) : password === employeePassword);
+    const valid = employee && (
+      useMongo
+        ? (employee.passwordHash ? await bcrypt.compare(password, employee.passwordHash) : password === employeePassword)
+        : password === employeePassword
+    );
     if (!valid) return res.status(401).json({ message: 'Invalid email or password.' });
     const user = { name: employee.name, email: employee.email, role: 'Employee' };
     res.json({ token: jwt.sign(user, jwtSecret, { expiresIn: '8h' }), user });
@@ -163,6 +197,100 @@ app.get('/api/profile', authenticate, async (req, res, next) => {
     if (!employee) return res.status(404).json({ message: 'Employee profile not found.' });
     res.json(serialize(employee));
   } catch (error) { next(error); }
+});
+
+app.get('/api/attendance', authenticate, async (req, res, next) => {
+  try {
+    const query = req.user.role === 'Employee' ? { employeeEmail: req.user.email } : {};
+    const records = useMongo
+      ? await Attendance.find(query).sort({ date: -1 }).limit(31).lean()
+      : memoryAttendance.filter(record => req.user.role === 'Manager' || record.employeeEmail === req.user.email).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 31);
+    res.json(records.map(serialize));
+  } catch (error) { next(error); }
+});
+
+app.post('/api/attendance/punch-in', authenticate, async (req, res, next) => {
+  try {
+    const date = getLocalDate();
+    if (isWeekend(date)) return res.status(400).json({ message: 'Saturday and Sunday are off days.' });
+    const employee = req.user.role === 'Manager' ? { employeeName: 'Manager', employeeEmail: req.user.email } : { employeeName: req.user.name, employeeEmail: req.user.email };
+    if (useMongo) {
+      if (await Attendance.exists({ employeeEmail: employee.employeeEmail, date })) return res.status(409).json({ message: 'You have already punched in today.' });
+      const record = await Attendance.create({ ...employee, date, status: 'Present', punchIn: new Date() });
+      return res.json(serialize(record));
+    }
+    const existing = memoryAttendance.find(record => record.employeeEmail === employee.employeeEmail && record.date === date);
+    if (existing) return res.status(409).json({ message: 'You have already punched in today.' });
+    const record = { id: randomUUID(), ...employee, date, status: 'Present', punchIn: new Date().toISOString(), punchOut: null };
+    memoryAttendance = [record, ...memoryAttendance];
+    res.json(record);
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: 'You have already punched in today.' });
+    next(error);
+  }
+});
+
+app.post('/api/attendance/punch-out', authenticate, async (req, res, next) => {
+  try {
+    const date = getLocalDate();
+    if (isWeekend(date)) return res.status(400).json({ message: 'Saturday and Sunday are off days.' });
+    if (useMongo) {
+      const record = await Attendance.findOneAndUpdate(
+        { employeeEmail: req.user.email, date, status: 'Present', punchIn: { $exists: true }, punchOut: { $exists: false } },
+        { $set: { punchOut: new Date() } },
+        { new: true }
+      );
+      if (!record) return res.status(409).json({ message: 'Punch in before punching out, or you have already punched out.' });
+      return res.json(serialize(record));
+    }
+    const record = memoryAttendance.find(item => item.employeeEmail === req.user.email && item.date === date);
+    if (!record || record.punchOut) return res.status(409).json({ message: 'Punch in before punching out, or you have already punched out.' });
+    record.punchOut = new Date().toISOString();
+    res.json(record);
+  } catch (error) { next(error); }
+});
+
+app.put('/api/attendance/:id', authenticate, requireManager, async (req, res, next) => {
+  try {
+    const date = String(req.body.date || '').trim();
+    const status = String(req.body.status || '').trim();
+    const punchIn = req.body.punchIn ? new Date(req.body.punchIn) : null;
+    const punchOut = req.body.punchOut ? new Date(req.body.punchOut) : null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !['Present', 'Off'].includes(status)) {
+      return res.status(400).json({ message: 'Choose a valid date and attendance status.' });
+    }
+    if ((punchIn && Number.isNaN(punchIn.getTime())) || (punchOut && Number.isNaN(punchOut.getTime())) || (punchIn && punchOut && punchOut < punchIn)) {
+      return res.status(400).json({ message: 'Choose valid punch times.' });
+    }
+    const updates = { date, status, punchIn, punchOut };
+    if (useMongo) {
+      const updated = await Attendance.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
+      if (!updated) return res.status(404).json({ message: 'Attendance record not found.' });
+      return res.json(serialize(updated));
+    }
+    const index = memoryAttendance.findIndex(record => record.id === req.params.id);
+    if (index === -1) return res.status(404).json({ message: 'Attendance record not found.' });
+    memoryAttendance[index] = { ...memoryAttendance[index], date, status, punchIn: punchIn?.toISOString() || null, punchOut: punchOut?.toISOString() || null };
+    return res.json(memoryAttendance[index]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/attendance/:id', authenticate, requireManager, async (req, res, next) => {
+  try {
+    if (useMongo) {
+      const deleted = await Attendance.findByIdAndDelete(req.params.id);
+      if (!deleted) return res.status(404).json({ message: 'Attendance record not found.' });
+      return res.status(204).send();
+    }
+    const exists = memoryAttendance.some(record => record.id === req.params.id);
+    if (!exists) return res.status(404).json({ message: 'Attendance record not found.' });
+    memoryAttendance = memoryAttendance.filter(record => record.id !== req.params.id);
+    return res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/api/messages', authenticate, async (req, res, next) => {
@@ -234,9 +362,10 @@ async function start() {
     await mongoose.connect(process.env.MONGODB_URI);
     const passwordHash = await bcrypt.hash(employeePassword, 10);
     if (await Employee.countDocuments() === 0) await Employee.insertMany(employeeSeed.map(employee => ({ ...employee, passwordHash })));
-    else await Employee.updateMany({ passwordHash: { $exists: false } }, { $set: { passwordHash } });
+    else await Employee.updateMany({ $or: [{ passwordHash: { $exists: false } }, { passwordHash: null }] }, { $set: { passwordHash } });
     console.log('Connected to MongoDB Atlas');
   } else console.log('MONGODB_URI not set; using demo memory data');
+
   const server = app.listen(port, '0.0.0.0', () => console.log(`API listening on port ${port}`));
   const shutdown = async signal => { console.log(`${signal}: shutting down`); await mongoose.disconnect(); server.close(() => process.exit(0)); };
   process.once('SIGTERM', () => shutdown('SIGTERM'));

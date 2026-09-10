@@ -4,12 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"npm run server:watch\"",
-    "client": "vite",
+    "dev": "concurrently \"vite --host 0.0.0.0 --port 5173 --strictPort\" \"npm run server:watch\"",
+    "client": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "server": "node server.js",
-    "server:watch": "nodemon --watch server.js --ext js --exec node server.js",
+    "server:watch": "nodemon --watch server.js --ext js --exec \"node server.js\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
