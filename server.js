@@ -9,7 +9,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 const app = express();
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 4001;
 const jwtSecret = process.env.JWT_SECRET || 'leaveflow-development-secret';
 const managerEmail = (process.env.MANAGER_EMAIL || 'akshaykhot5899@gmail.com').toLowerCase();
 const managerPassword = process.env.MANAGER_PASSWORD || 'Akshay@5899';
@@ -46,6 +46,18 @@ const employeeSchema = new mongoose.Schema({
 }, { timestamps: true });
 const Employee = mongoose.model('Employee', employeeSchema);
 
+const messageSchema = new mongoose.Schema({
+  senderName: { type: String, required: true },
+  senderEmail: { type: String, required: true },
+  senderRole: { type: String, enum: ['Manager', 'Employee'], required: true },
+  recipientName: { type: String, required: true },
+  recipientEmail: { type: String, required: true },
+  subject: { type: String, required: true, maxlength: 120 },
+  body: { type: String, required: true, maxlength: 2000 },
+  read: { type: Boolean, default: false }
+}, { timestamps: true });
+const Message = mongoose.model('Message', messageSchema);
+
 const seed = [
   { id: 'demo-1', employeeName: 'Maya Patel', employeeEmail: 'maya.patel@northstar.co', type: 'Annual leave', startDate: '2026-09-18', endDate: '2026-09-22', days: 3, reason: 'Family trip', status: 'Pending', submittedAt: '2026-09-08T09:30:00.000Z' },
   { id: 'demo-2', employeeName: 'Jon Bell', employeeEmail: 'jon.bell@northstar.co', type: 'Sick leave', startDate: '2026-09-09', endDate: '2026-09-10', days: 2, reason: 'Recovery time', status: 'Approved', submittedAt: '2026-09-07T12:10:00.000Z' },
@@ -60,6 +72,7 @@ const employeeSeed = [
 ];
 let memoryLeaves = [...seed];
 let memoryEmployees = [...employeeSeed];
+let memoryMessages = [];
 const useMongo = Boolean(process.env.MONGODB_URI);
 
 const serialize = leave => {
@@ -139,6 +152,48 @@ app.get('/api/employees', authenticate, requireManager, async (_req, res, next) 
   try {
     const employees = useMongo ? await Employee.find().sort({ name: 1 }).lean() : memoryEmployees;
     res.json(employees.map(serialize));
+  } catch (error) { next(error); }
+});
+
+app.get('/api/profile', authenticate, async (req, res, next) => {
+  try {
+    const employee = useMongo
+      ? await Employee.findOne({ email: req.user.email }).lean()
+      : memoryEmployees.find(item => item.email === req.user.email);
+    if (!employee) return res.status(404).json({ message: 'Employee profile not found.' });
+    res.json(serialize(employee));
+  } catch (error) { next(error); }
+});
+
+app.get('/api/messages', authenticate, async (req, res, next) => {
+  try {
+    const filter = req.user.role === 'Manager'
+      ? {}
+      : { $or: [{ senderEmail: req.user.email }, { recipientEmail: req.user.email }] };
+    const messages = useMongo
+      ? await Message.find(filter).sort({ createdAt: -1 }).lean()
+      : memoryMessages.filter(message => req.user.role === 'Manager' || message.senderEmail === req.user.email || message.recipientEmail === req.user.email).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(messages.map(serialize));
+  } catch (error) { next(error); }
+});
+
+app.post('/api/messages', authenticate, async (req, res, next) => {
+  try {
+    const subject = String(req.body.subject || '').trim();
+    const body = String(req.body.body || '').trim();
+    if (!subject || !body) return res.status(400).json({ message: 'Subject and message are required.' });
+    let recipientEmail = managerEmail;
+    let recipientName = 'Manager';
+    if (req.user.role === 'Manager') {
+      recipientEmail = String(req.body.recipientEmail || '').trim().toLowerCase();
+      const employee = useMongo ? await Employee.findOne({ email: recipientEmail }).lean() : memoryEmployees.find(item => item.email === recipientEmail);
+      if (!employee) return res.status(404).json({ message: 'Employee recipient not found.' });
+      recipientName = employee.name;
+    }
+    const payload = { senderName: req.user.name, senderEmail: req.user.email, senderRole: req.user.role, recipientName, recipientEmail, subject, body, read: false };
+    const message = useMongo ? await Message.create(payload) : { ...payload, id: randomUUID(), createdAt: new Date().toISOString() };
+    if (!useMongo) memoryMessages = [message, ...memoryMessages];
+    res.status(201).json(serialize(message));
   } catch (error) { next(error); }
 });
 

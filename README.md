@@ -15,12 +15,13 @@ Without `MONGODB_URI`, the API runs with demo memory data so the UI can be explo
 
 ## Login
 
-The API uses JWT sessions. Set `JWT_SECRET`, `MANAGER_EMAIL`, `MANAGER_PASSWORD`, and `EMPLOYEE_PASSWORD` in `.env`. The default development credentials are `manager@northstar.co` / `manager123` for the manager and any seeded employee email / `leaveflow123` for employee access. Change these values before deployment.
+The API uses JWT sessions. Set `JWT_SECRET`, `MANAGER_EMAIL`, `MANAGER_PASSWORD`, and `EMPLOYEE_PASSWORD` in `.env`. The default development credentials are `akshaykhot5899@gmail.com` / `Akshay@5899` for the manager and any seeded employee email / `leaveflow123` for employee access. Change these values before deployment.
 
 ## Behavior
 
 - Employees can submit requests and cancel only pending requests.
 - New employees can register from the login screen; registration creates a MongoDB employee record with a hashed password and signs them in immediately.
+- Employees and managers can exchange messages from the dashboard; messages are stored in the `messages` collection and scoped by authenticated user.
 - Managers can approve or reject only pending requests.
 - Managers can view all employee records and leave requests after login.
 - Employees can view only their own leave requests, submit new requests, and cancel their own pending requests.
