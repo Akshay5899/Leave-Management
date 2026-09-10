@@ -20,4 +20,4 @@ services:
       - key: EMPLOYEE_PASSWORD
         sync: false
       - key: FRONTEND_URL
-        sync: false
+        value: https://leave-management-mauve.vercel.app
