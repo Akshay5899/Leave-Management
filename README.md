@@ -5,7 +5,7 @@ A responsive employee leave dashboard backed by Express and MongoDB Atlas.
 ## Run locally
 
 1. Install dependencies: `npm install`
-2. Copy `.env.example` to `.env` and add your MongoDB Atlas connection string. Keep the real URI in `.env`; do not commit it.
+2. Create a local `.env` file with the required MongoDB, JWT, login, CORS, and API URL variables. Keep it private; do not commit it.
 3. Start both apps: `npm run dev`
 4. Open `http://localhost:5173`
 
