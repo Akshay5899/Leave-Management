@@ -42,7 +42,7 @@ Create a new **Web Service** from the repository. Render can also use the includ
 
 Set these Render environment variables:
 
-`MONGODB_URI` is your Atlas URI, `JWT_SECRET` is a long random secret, `MANAGER_EMAIL` and `MANAGER_PASSWORD` define manager login, `EMPLOYEE_PASSWORD` defines the seeded employee password, and `FRONTEND_URL` is the final Vercel URL, for example `https://leaveflow.vercel.app`.
+`MONGODB_URI` is your Atlas URI, `JWT_SECRET` is a long random secret, `MANAGER_EMAIL` and `MANAGER_PASSWORD` define manager login, `EMPLOYEE_PASSWORD` defines the seeded employee password, and `FRONTEND_URL` must be `https://leave-management-mauve.vercel.app` without a trailing slash.
 
 Copy the Render service URL, such as `https://leaveflow-api.onrender.com`.
 
@@ -52,9 +52,9 @@ Import the same GitHub repository into Vercel. The included `vercel.json` config
 
 Add this Vercel environment variable:
 
-`VITE_API_URL=https://leaveflow-api.onrender.com/api`
+`VITE_API_URL=https://your-render-service.onrender.com/api`
 
-Deploy or redeploy after adding the variable. Then update Render's `FRONTEND_URL` to the exact Vercel domain so production CORS permits the browser requests.
+Deploy or redeploy after adding the variable. Then set Render's `FRONTEND_URL` to `https://leave-management-mauve.vercel.app` so production CORS permits the browser requests.
 
 ### 3. Production checklist
 
