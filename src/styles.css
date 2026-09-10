@@ -92,3 +92,82 @@ body { background: var(--canvas); color: var(--ink); }
 .message-section { margin-top: 30px; padding: 25px 24px 24px; border-radius: 17px; background: var(--surface); }.message-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); gap: 24px; }.message-list { display: grid; gap: 10px; align-content: start; }.message-item { padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: #fcfcff; }.message-meta { display: flex; justify-content: space-between; gap: 15px; color: var(--muted); font: 500 10px 'DM Mono', monospace; }.message-meta strong { color: var(--ink); font: 700 12px 'Manrope', sans-serif; }.message-item h3 { margin: 10px 0 6px; font-size: 13px; }.message-item p { margin: 0 0 10px; color: var(--muted); font-size: 12px; line-height: 1.55; }.message-item small { color: var(--indigo); font: 500 10px 'DM Mono', monospace; }.message-compose { padding: 18px; border-radius: 12px; background: #f1f1ff; }.message-compose label { display: block; margin: 12px 0; color: var(--ink); font: 600 10px 'DM Mono', monospace; text-transform: uppercase; }.message-compose input, .message-compose select, .message-compose textarea { display: block; width: 100%; margin-top: 7px; border: 1px solid #ddddef; border-radius: 7px; padding: 10px; outline: none; color: var(--ink); background: #fff; font: 12px 'Manrope', sans-serif; text-transform: none; letter-spacing: 0; }.message-compose .primary-button { width: 100%; margin-top: 5px; }
 #messages { order: 8; }
 @media (max-width: 760px) { .message-section { padding: 20px 14px; }.message-layout { grid-template-columns: 1fr; gap: 16px; } }
+
+/* Dashboard responsive overrides */
+@media (max-width: 1100px) {
+	.content { padding-right: 28px; padding-left: 28px; }
+	.request-row { grid-template-columns: minmax(180px, 1.2fr) minmax(155px, 1fr) 95px 150px; gap: 12px; }
+	.request-row .reason { display: none; }
+	.request-row .actions { grid-column: 2 / -1; justify-content: flex-start; }
+	.request-row .status { grid-column: 3; grid-row: 1; }
+	.message-layout { grid-template-columns: minmax(0, 1fr) minmax(250px, .8fr); }
+}
+
+@media (max-width: 760px) {
+	.app-main { width: calc(100% - 70px); margin-left: 70px; }
+	.content { width: 100%; padding: 18px 13px 45px; }
+	.intro { align-items: flex-start; padding: 24px 22px; }
+	.intro h1 { font-size: 31px; }
+	.role-badge { margin-top: 20px; }
+	.metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+	.metric { min-width: 0; padding: 20px 17px; }
+	.metric:first-child, .metric:last-child { padding-left: 17px; }
+	.metric:last-child { grid-column: 1 / -1; }
+	.metric strong { font-size: 29px; }
+	.metric:nth-child(2) strong { font-size: 31px; }
+	.toolbar { display: block; padding: 14px; }
+	.tabs { width: 100%; gap: 18px; overflow-x: auto; padding-bottom: 2px; }
+	.tabs button { flex: 0 0 auto; white-space: nowrap; }
+	.toolbar > .primary-button { width: 100%; margin-top: 15px; }
+	.request-list { padding: 0 14px 14px; }
+	.request-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; min-height: 0; padding: 18px 0; }
+	.request-row .person { min-width: 0; }
+	.request-row .person > div { min-width: 0; }
+	.request-row .person strong, .request-row .person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.request-row .date-range { grid-column: 1; grid-row: 2; min-width: 0; }
+	.request-row .status { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+	.request-row .actions { grid-column: 1 / -1; grid-row: 3; display: flex; justify-content: stretch; }
+	.request-row .actions button { flex: 1; }
+	.attendance-section, .employee-section, .message-section { margin-top: 24px; padding: 20px 14px 14px; }
+	.section-title { align-items: flex-start; gap: 10px; }
+	.section-title > span { text-align: right; }
+	.attendance-today { grid-template-columns: 1fr; gap: 15px; }
+	.attendance-times { justify-content: space-between; gap: 12px; }
+	.attendance-actions .primary-button { width: 100%; }
+	.attendance-history { margin-right: -2px; }
+	.employee-table { overflow-x: auto; }
+	.employee-table-head, .employee-row { min-width: 620px; }
+	.employee-table-head { display: none; }
+	.employee-row { grid-template-columns: 1fr 1fr; min-width: 0; gap: 10px; padding: 15px 0; }
+	.employee-row .person { grid-column: 1 / -1; }
+	.employee-row > span:nth-child(3) { text-align: right; }
+	.employee-row > span:nth-child(4)::before { content: 'Used: '; color: var(--muted); }
+	.employee-row > span:nth-child(5) { text-align: right; }
+	.message-layout { grid-template-columns: 1fr; gap: 16px; }
+	.message-compose { min-width: 0; }
+	.modal-backdrop { padding: 13px; overflow-y: auto; }
+	.modal { max-height: calc(100vh - 26px); overflow-y: auto; padding: 24px 18px; }
+	.date-fields { grid-template-columns: 1fr; gap: 0; }
+}
+
+@media (max-width: 480px) {
+	.topbar { height: 68px; padding: 0 14px; }
+	.topbar-right { gap: 10px; }
+	.logged-user { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.content { padding-right: 9px; padding-left: 9px; }
+	.intro { padding: 20px 17px; }
+	.intro h1 { font-size: 28px; }
+	.metrics { grid-template-columns: 1fr; }
+	.metric, .metric:last-child { grid-column: auto; min-height: 105px; padding: 17px; }
+	.metric:first-child, .metric:last-child { padding-left: 17px; }
+	.tabs { gap: 14px; }
+	.section-title { display: block; }
+	.section-title > span { display: block; margin-top: 8px; text-align: left; }
+	.attendance-times { display: grid; grid-template-columns: 1fr 1fr; }
+	.attendance-row { min-width: 500px; }
+	.manager-attendance-row, .manager-attendance-header { min-width: 665px; }
+	.login-page { padding: 14px; }
+	.login-art { min-height: 230px; padding: 24px; }
+	.login-art h1 { font-size: 42px; }
+	.login-card { padding: 24px 18px; }
+}
