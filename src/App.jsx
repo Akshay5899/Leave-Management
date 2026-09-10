@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+const API = import.meta.env.PROD
+  ? 'https://leave-management-r25l.onrender.com/api'
+  : (import.meta.env.VITE_API_URL || 'http://localhost:4001/api');
 const tabs = ['All requests', 'Pending', 'Approved', 'Rejected'];
 
 function formatDate(value) { return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(`${value}T12:00:00`)); }
