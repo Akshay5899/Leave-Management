@@ -100,6 +100,31 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.post('/api/auth/register', loginLimiter, async (req, res, next) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const department = String(req.body.department || 'General').trim();
+    if (name.length < 2 || !email.includes('@') || password.length < 8) return res.status(400).json({ message: 'Enter a name, valid email, and password of at least 8 characters.' });
+    if (email === managerEmail) return res.status(409).json({ message: 'That email is reserved for manager access.' });
+    if (useMongo) {
+      if (await Employee.exists({ email })) return res.status(409).json({ message: 'An account with this email already exists.' });
+      const employee = await Employee.create({ name, email, department, role: 'Employee', allowance: 24, usedDays: 0, passwordHash: await bcrypt.hash(password, 10) });
+      const user = { name: employee.name, email: employee.email, role: 'Employee' };
+      return res.status(201).json({ token: jwt.sign(user, jwtSecret, { expiresIn: '8h' }), user });
+    }
+    if (memoryEmployees.some(employee => employee.email === email)) return res.status(409).json({ message: 'An account with this email already exists.' });
+    const employee = { name, email, department, role: 'Employee', allowance: 24, usedDays: 0 };
+    memoryEmployees = [...memoryEmployees, employee];
+    const user = { name, email, role: 'Employee' };
+    res.status(201).json({ token: jwt.sign(user, jwtSecret, { expiresIn: '8h' }), user });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: 'An account with this email already exists.' });
+    next(error);
+  }
+});
+
 app.get('/api/health', (_req, res) => res.json({ ok: true, database: useMongo && mongoose.connection.readyState === 1 ? 'mongodb' : 'demo-memory' }));
 app.get('/api/leaves', authenticate, async (req, res, next) => {
   try {

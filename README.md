@@ -20,6 +20,7 @@ The API uses JWT sessions. Set `JWT_SECRET`, `MANAGER_EMAIL`, `MANAGER_PASSWORD`
 ## Behavior
 
 - Employees can submit requests and cancel only pending requests.
+- New employees can register from the login screen; registration creates a MongoDB employee record with a hashed password and signs them in immediately.
 - Managers can approve or reject only pending requests.
 - Managers can view all employee records and leave requests after login.
 - Employees can view only their own leave requests, submit new requests, and cancel their own pending requests.
